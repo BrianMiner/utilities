@@ -12,11 +12,14 @@ def eval_model_results_binary (result_tbl, bins=10, return_gains = True):
     import matplotlib.pyplot as plt
     import numpy as np
     
-
+    
     #calculate gains / lift
     
     result=pd.DataFrame(result_tbl,columns=['actual','pred'])
-    result['decile']=(bins)-(pd.qcut(result.pred,bins,labels=False))
+    result['decile']=(pd.qcut(result.pred,bins,labels=False,duplicates='drop'))
+    actual_bins=result['decile'].max()+1 #if drop duplicates changed
+    result['decile']=(actual_bins)-result['decile']
+
     grp_dec=result.groupby('decile')
     mean_act_pred=grp_dec['actual','pred'].mean()
     tbl_gains=grp_dec['actual','pred'].agg(['count','sum', 'mean', 'min', 'max']).sort_values([('pred', 'mean')], ascending=False)
@@ -40,8 +43,8 @@ def eval_model_results_binary (result_tbl, bins=10, return_gains = True):
     l_comb['cum bads']=l_comb['Cume Count']-l_comb['Cume Responders']
     
     
-    total_bads=l_comb['cum bads'].values[bins-1]
-    total_goods=l_comb['Cume Responders'].values[bins-1]
+    total_bads=l_comb['cum bads'].values[actual_bins-1]
+    total_goods=l_comb['Cume Responders'].values[actual_bins-1]
     
     l_comb['per bads']= l_comb['cum bads'] / total_bads
     l_comb['per goods']= l_comb['Cume Responders'] / total_goods
@@ -51,13 +54,13 @@ def eval_model_results_binary (result_tbl, bins=10, return_gains = True):
     
     
         
-    
+    print('Actual bins is: {}'.format(actual_bins))
     print('AUC is: {}'.format(roc_auc_score(result_tbl[:,0],result_tbl[:,1])))
     print('KS: {}'.format(l_comb['KS'].values.max()))
     print('Total Responders: {}'.format(result_tbl[:,0].sum()))  
       
     print('Lift Bin 1 (Vs Mean): {}'.format(l_comb['Actual Response Rate'].values[0] / result_tbl[:,0].mean()))
-    print('Lift Bin 1 (Vs Last Bin): {}'.format(l_comb['Actual Response Rate'].values[0] / l_comb['Actual Response Rate'].values[bins-1]))
+    print('Lift Bin 1 (Vs Last Bin): {}'.format(l_comb['Actual Response Rate'].values[0] / l_comb['Actual Response Rate'].values[actual_bins-1]))
    
   
     l_comb = l_comb[['Decile','Count','Responders','Actual Response Rate','Predicted Response Rate','Lift','Cume Count','Cume Responders','Cume Response Rate', 'Cume Lift','Min Predicted','Max Predicted']]
@@ -68,6 +71,7 @@ def eval_model_results_binary (result_tbl, bins=10, return_gains = True):
     fig, ax = plt.subplots()
     ax.plot(mean_act_pred.actual)
     ax.plot(mean_act_pred.pred)
+    plt.axhline(y=result_tbl[:,0].mean(), color='r', linestyle='-')
     ax.set_xlabel("Predicted Score Bin")
     ax.set_ylabel("Actual Response Rate")
     ax.set_title("Avg Actual and Avg Prediction Performance")
@@ -81,6 +85,7 @@ def eval_model_results_binary (result_tbl, bins=10, return_gains = True):
     ax.set_xlabel("Predicted Score Bin")
     ax.set_ylabel("Actual Response Rate")
     ax.set_title("Avg Actual Performance")
+    plt.axhline(y=result_tbl[:,0].mean(), color='r', linestyle='-')
     
     #cum lift
     fig, ax = plt.subplots()
@@ -94,29 +99,30 @@ def eval_model_results_binary (result_tbl, bins=10, return_gains = True):
         return(l_comb)
     else:
         return (None)
+ 
     
-def lift_decile_x_scorer (y_true, y_pred, lift_decile=1, proba=True):
+#def lift_decile_x_scorer (y_true, y_pred, lift_decile=1, proba=True):
     
     #requires:
-    import pandas as pd
-    import numpy as np
+#    import pandas as pd
+#    import numpy as np
     
     
-    if proba:
-        y_pred=y_pred[:,1]
+#    if proba:
+#        y_pred=y_pred[:,1]
     
    #calculate gains / lift
-    bins=10
-    try:
-        result=pd.DataFrame(pd.DataFrame({'actual':y_true,'pred':y_pred}))
-        result['decile']=(bins)-(pd.qcut(result.pred,bins,labels=False))
-        grp_dec=result.groupby('decile')
-        mean_act_pred=grp_dec['actual'].mean()
-        overall= y_true.mean() 
-        return(mean_act_pred.iloc[lift_decile-1]/overall)
-    except Exception , e:
-        print (e)
-        return(0)
+#    bins=10
+#    try:
+#        result=pd.DataFrame(pd.DataFrame({'actual':y_true,'pred':y_pred}))
+#        result['decile']=(bins)-(pd.qcut(result.pred,bins,labels=False))
+#        grp_dec=result.groupby('decile')
+#        mean_act_pred=grp_dec['actual'].mean()
+#        overall= y_true.mean() 
+#        return(mean_act_pred.iloc[lift_decile-1]/overall)
+    #except Exception , e:
+    #    print (e)
+    #    return(0)
     
     
     
